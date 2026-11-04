@@ -19,7 +19,8 @@
 --  Why a fixed node pool is enough: every node except the root holds
 --  at least 3 keys, so Capacity (256) keys need at most 86 nodes.
 --  The pool has 96, so Insert can fail only when the index holds
---  Capacity keys, never because nodes ran out.
+--  Capacity keys, never because nodes ran out. Pool_Size is derived
+--  from Capacity in the private part, so the two cannot drift apart.
 --
 --  PROOF TARGETS
 --    I1  Keys are strictly increasing under "<" (no duplicates).
@@ -49,7 +50,8 @@ package Legder.Index with SPARK_Mode is
    function Is_Full (T : Table) return Boolean is (Count (T) = Capacity);
 
    function Find (T : Table; K : Key) return Slot_Or_None;
-   --  The slot holding K, or 0 when K is absent.
+   --  The slot holding K, or 0 when K is absent. Raises Program_Error
+   --  if the tree is corrupt (descent deeper than any valid tree).
 
    procedure Insert (T : in out Table; K : Key; S : out Slot; Ok : out Boolean)
      with Pre  => Find (T, K) = 0,
@@ -60,31 +62,48 @@ package Legder.Index with SPARK_Mode is
    --  Adds K and returns the slot to store its value in. Ok = False
    --  only when the index is full; then T is unchanged. K must be
    --  absent (the store calls Find first and overwrites in place).
+   --  Raises Program_Error if the tree is corrupt, never reports Ok
+   --  for a key that was not filed.
 
    procedure Remove (T : in out Table; K : Key; Removed : out Boolean)
      with Post => Find (T, K) = 0
                   and then Count (T) = Count (T)'Old - (if Removed then 1 else 0);
    --  Removes K and recycles its slot. Removing an absent key is a
-   --  no-op with Removed = False.
+   --  no-op with Removed = False. Raises Program_Error if the tree is
+   --  corrupt, never reports Removed for a key that was not removed.
 
    function Nth (T : Table; Pos : Positive) return Key
      with Pre => Pos <= Count (T);
    --  The Pos-th smallest key (in-order walk). Used by tests to check
-   --  ordering and by future range scans.
+   --  ordering and by future range scans. Raises Program_Error if the
+   --  tree holds fewer keys than Count says.
 
    function Well_Formed (T : Table) return Boolean;
    --  Structural check of the whole B-tree: node fill (3 to 7 keys,
-   --  root may have fewer), all leaves at the same depth, key count
-   --  equals Count, no node lost or counted twice, and slot count
-   --  consistent. Walks the tree, so it is for tests and proofs, not
-   --  for use in production paths.
+   --  root may have fewer), keys strictly increasing inside every
+   --  node, every key inside the range set by its ancestors' separator
+   --  keys, all leaves at the same depth, key count equals Count, no
+   --  node reached twice, no node or slot both in use and on a free
+   --  list, and slot count consistent. Walks the tree, so it is for
+   --  tests and proofs, not for use in production paths.
 
 private
 
    Max_Keys  : constant := 7;    --  2 * degree - 1
    Min_Keys  : constant := 3;    --  degree - 1 (every non-root node)
-   Pool_Size : constant := 96;   --  see the note above: 86 nodes max
+
+   --  Fewest keys a valid tree holds per node: Min_Keys in every
+   --  non-root node, at least 1 in the root.
+   Min_Pool  : constant := (Capacity - 1) / Min_Keys + 1;   --  86 nodes max
+   Pool_Size : constant := Min_Pool + 10;                   --  96, spare nodes
    Max_Depth : constant := 10;   --  far above the real height (<= 5)
+
+   --  A tree one level deeper than Max_Depth needs at least
+   --  2 * (Min_Keys + 1) ** Max_Depth - 1 keys, so if that is more than
+   --  Capacity, Max_Depth levels are always enough.
+   pragma Compile_Time_Error
+     (2 * (Min_Keys + 1) ** Max_Depth - 1 <= Capacity,
+      "Max_Depth too small for Capacity");
 
    subtype Node_Ref is Natural range 0 .. Pool_Size;   --  0 = none
    subtype Node_Id  is Node_Ref range 1 .. Pool_Size;

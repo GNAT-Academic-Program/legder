@@ -1,0 +1,259 @@
+Phase 1 of 3: generation of data representation information ...
+Phase 2 of 3: generation of Global contracts ...
+Phase 3 of 3: flow analysis and proof ...
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder.adb:7:27
+
+ info: unrolling loop [info-unrolling-inlining]
+--> legder.adb:9:28
+
+ info: division check proved
+--> legder.adb:11:24
+
+ info: division check proved
+--> legder.adb:13:23
+
+ info: range check proved
+--> legder.adb:21:38
+
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder.adb:24:23
+
+ info: index check proved
+--> legder.adb:25:22
+
+ info: index check proved
+--> legder.adb:25:37
+
+ info: index check proved
+--> legder.adb:26:29
+
+ info: index check proved
+--> legder.adb:26:43
+
+ info: implicit aspect Always_Terminates on overriding operator "=" has been proved, subprogram will terminate
+--> legder.ads:54:13
+
+ info: index check proved
+--> legder.ads:56:56
+
+ info: index check proved
+--> legder.ads:56:70
+
+ info: implicit aspect Always_Terminates on overriding operator "<" has been proved, subprogram will terminate
+--> legder.ads:59:13
+
+ info: data dependencies proved
+--> legder.ads:60:11
+
+ info: implicit aspect Always_Terminates on "Same" has been proved, subprogram will terminate
+--> legder.ads:64:13
+
+ info: index check proved
+--> legder.ads:66:56
+
+ info: index check proved
+--> legder.ads:66:70
+
+ info: implicit aspect Always_Terminates on "CRC" has been proved, subprogram will terminate
+--> legder.ads:84:13
+
+ info: data dependencies proved
+--> legder.ads:85:11
+ info: implicit aspect Always_Terminates on "Get_U32" has been proved, subprogram will terminate
+--> legder-record_format.adb:14:13
+
+ info: implicit aspect Always_Terminates on "Get_U64" has been proved, subprogram will terminate
+--> legder-record_format.adb:18:13
+
+ info: unrolling loop [info-unrolling-inlining]
+--> legder-record_format.adb:24:23
+
+ info: index check proved
+--> legder-record_format.adb:25:20
+
+ info: range check proved
+--> legder-record_format.adb:25:36
+
+ info: division check proved
+--> legder-record_format.adb:26:17
+
+ info: unrolling loop [info-unrolling-inlining]
+--> legder-record_format.adb:33:31
+
+ info: index check proved
+--> legder-record_format.adb:34:42
+
+ info: unrolling loop [info-unrolling-inlining]
+--> legder-record_format.adb:42:23
+
+ info: index check proved
+--> legder-record_format.adb:43:20
+
+ info: range check proved
+--> legder-record_format.adb:43:36
+
+ info: division check proved
+--> legder-record_format.adb:44:17
+
+ info: unrolling loop [info-unrolling-inlining]
+--> legder-record_format.adb:51:31
+
+ info: index check proved
+--> legder-record_format.adb:52:45
+
+ info: precondition proved
+--> legder-record_format.adb:64:07
+
+ info: precondition proved
+--> legder-record_format.adb:65:07
+
+ info: division check proved
+--> legder-record_format.adb:68:44
+
+ info: range check proved
+--> legder-record_format.adb:68:44
+
+ info: division check proved
+--> legder-record_format.adb:69:44
+
+ info: range check proved
+--> legder-record_format.adb:69:44
+
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder-record_format.adb:70:32
+
+ info: overflow check proved
+--> legder-record_format.adb:71:21
+
+ info: index check proved
+--> legder-record_format.adb:71:25
+
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder-record_format.adb:74:35
+
+ info: overflow check proved
+--> legder-record_format.adb:75:26
+
+ info: index check proved
+--> legder-record_format.adb:75:30
+
+ info: precondition proved
+--> legder-record_format.adb:78:07
+
+ info: range check proved
+--> legder-record_format.adb:78:33
+
+ info: range check proved
+--> legder-record_format.adb:87:55
+
+ info: precondition proved
+--> legder-record_format.adb:91:10
+
+ info: assertion proved
+--> legder-record_format.adb:99:22
+
+ info: precondition proved
+--> legder-record_format.adb:100:10
+
+ info: range check proved
+--> legder-record_format.adb:100:39
+
+ info: precondition proved
+--> legder-record_format.adb:103:17
+
+ info: range check proved
+--> legder-record_format.adb:105:21
+
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder-record_format.adb:106:24
+
+ info: index check proved
+--> legder-record_format.adb:107:21
+
+ info: overflow check proved
+--> legder-record_format.adb:107:38
+
+ info: index check proved
+--> legder-record_format.adb:107:42
+
+ info: range check proved
+--> legder-record_format.adb:110:24
+
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder-record_format.adb:111:27
+
+ info: index check proved
+--> legder-record_format.adb:112:24
+
+ info: overflow check proved
+--> legder-record_format.adb:112:43
+
+ info: index check proved
+--> legder-record_format.adb:112:47
+
+ info: initialization of "B" proved
+--> legder-record_format.ads:39:38
+
+ info: data dependencies proved
+--> legder-record_format.ads:40:11
+
+ info: initialization of "R" proved
+--> legder-record_format.ads:42:33
+
+ info: initialization of "Valid" proved
+--> legder-record_format.ads:42:53
+
+ info: data dependencies proved
+--> legder-record_format.ads:43:11
+ info: index check proved
+--> legder-ram_device.adb:19:20
+
+ info: index check proved
+--> legder-ram_device.adb:20:27
+
+ info: index check proved
+--> legder-ram_device.adb:22:27
+
+ info: overflow check proved
+--> legder-ram_device.adb:33:31
+
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder-ram_device.adb:42:55
+
+ info: division check proved
+--> legder-ram_device.adb:43:47
+
+ info: range check proved
+--> legder-ram_device.adb:43:47
+
+ info: index check proved
+--> legder-ram_device.adb:46:22
+
+ info: index check proved
+--> legder-ram_device.adb:49:19
+
+ info: index check proved
+--> legder-ram_device.adb:52:14
+
+ info: overflow check proved
+--> legder-ram_device.adb:71:29
+
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder-ram_device.adb:74:20
+
+ info: cannot unroll loop (too many loop iterations) [info-unrolling-inlining]
+--> legder-ram_device.adb:106:20
+
+ info: implicit aspect Always_Terminates on "Writes" has been proved, subprogram will terminate
+--> legder-ram_device.ads:17:13
+
+ info: implicit aspect Always_Terminates on "Syncs" has been proved, subprogram will terminate
+--> legder-ram_device.ads:18:13
+
+ info: initialization of "Data" proved
+--> legder-ram_device.ads:20:42
+
+ info: exceptional case proved
+--> legder-ram_device.ads:23:53
+*** Interrupted ***

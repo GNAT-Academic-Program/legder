@@ -29,7 +29,9 @@ package body Legder.RAM_Device with SPARK_Mode is
          return;
       end if;
 
-      N_Writes := N_Writes + 1;
+      if N_Writes < Natural'Last then
+         N_Writes := N_Writes + 1;
+      end if;
 
       if Tear then
          Tear := False;
@@ -65,7 +67,9 @@ package body Legder.RAM_Device with SPARK_Mode is
          raise Simulated_Crash;
       end if;
 
-      N_Syncs := N_Syncs + 1;
+      if N_Syncs < Natural'Last then
+         N_Syncs := N_Syncs + 1;
+      end if;
 
       for I in Idx loop
          if Dirty (I) then

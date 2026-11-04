@@ -252,7 +252,9 @@ package body Legder.Index with SPARK_Mode is
             end if;
          end;
       end loop;
-      return 0;
+      --  #1158: a valid tree is never deeper than Max_Depth, so reaching
+      --  here means the tree is corrupt. Do not report "absent".
+      raise Program_Error with "Find: descent exceeded Max_Depth";
    end Find;
 
    ------------
@@ -260,8 +262,9 @@ package body Legder.Index with SPARK_Mode is
    ------------
 
    procedure Insert (T : in out Table; K : Key; S : out Slot; Ok : out Boolean) is
-      X : Node_Id;
-      P : Position;
+      X        : Node_Id;
+      P        : Position;
+      Inserted : Boolean := False;
    begin
       if T.Total = Capacity then
          S := 1;
@@ -298,6 +301,7 @@ package body Legder.Index with SPARK_Mode is
             end loop;
             T.Nodes (X).Items (P) := (K => K, S => S);
             T.Nodes (X).N := T.Nodes (X).N + 1;
+            Inserted := True;
             exit;
          else
             if T.Nodes (T.Nodes (X).Child (P)).N = Max_Keys then
@@ -309,6 +313,11 @@ package body Legder.Index with SPARK_Mode is
             X := T.Nodes (X).Child (P);
          end if;
       end loop;
+
+      --  #1158: never report success for a key that was not filed.
+      if not Inserted then
+         raise Program_Error with "Insert: no leaf reached within Max_Depth";
+      end if;
 
       T.Total := T.Total + 1;
       Ok := True;
@@ -322,6 +331,7 @@ package body Legder.Index with SPARK_Mode is
       Old_Slot : constant Slot_Or_None := Find (T, K);
       Target   : Key := K;
       X        : Node_Id;
+      Deleted  : Boolean := False;
    begin
       if Old_Slot = 0 then
          Removed := False;
@@ -339,11 +349,16 @@ package body Legder.Index with SPARK_Mode is
          begin
             if T.Nodes (X).Leaf then
                --  Hit is true here: the key is present and we followed
-               --  the only path it can be on.
+               --  the only path it can be on. Check it, do not assume it.
+               if not Hit then
+                  raise Program_Error
+                    with "Remove: key not found at the leaf it was routed to";
+               end if;
                for J in P .. T.Nodes (X).N - 1 loop
                   T.Nodes (X).Items (J) := T.Nodes (X).Items (J + 1);
                end loop;
                T.Nodes (X).N := T.Nodes (X).N - 1;
+               Deleted := True;
                exit;
 
             elsif Hit then
@@ -403,6 +418,12 @@ package body Legder.Index with SPARK_Mode is
          end;
       end loop;
 
+      --  #1158: never recycle the slot and report success unless a key
+      --  was actually removed from a leaf.
+      if not Deleted then
+         raise Program_Error with "Remove: no leaf reached within Max_Depth";
+      end if;
+
       T.Slot_Free_Count := T.Slot_Free_Count + 1;
       T.Slot_Free (T.Slot_Free_Count) := Old_Slot;
       T.Total := T.Total - 1;
@@ -456,7 +477,10 @@ package body Legder.Index with SPARK_Mode is
             end if;
          end;
       end loop;
-      return (others => <>);
+      --  #1159: Pos <= Count (T) guarantees a hit above. Reaching here
+      --  means the tree and its key count disagree. Do not return a
+      --  blank Key that looks real.
+      raise Program_Error with "Nth: tree holds fewer keys than Count";
    end Nth;
 
    -----------------
@@ -464,9 +488,18 @@ package body Legder.Index with SPARK_Mode is
    -----------------
 
    function Well_Formed (T : Table) return Boolean is
+      subtype Item_Idx is Positive range 1 .. Max_Keys;
       Stack_Size : constant := Max_Depth * (Max_Keys + 1);
       St_Node  : array (1 .. Stack_Size) of Node_Id := [others => 1];
       St_Depth : array (1 .. Stack_Size) of Positive := [others => 1];
+      --  #1157: the open interval each subtree must stay inside, kept as
+      --  a reference to the separator item (node, index). Node 0 = no bound.
+      St_Lo_N  : array (1 .. Stack_Size) of Node_Ref := [others => 0];
+      St_Lo_I  : array (1 .. Stack_Size) of Item_Idx := [others => 1];
+      St_Hi_N  : array (1 .. Stack_Size) of Node_Ref := [others => 0];
+      St_Hi_I  : array (1 .. Stack_Size) of Item_Idx := [others => 1];
+      Seen_Node  : array (Node_Id) of Boolean := [others => False];
+      Seen_Slot  : array (Slot) of Boolean := [others => False];
       Sp         : Natural := 1;
       Nodes_Seen : Natural := 0;
       Keys_Seen  : Natural := 0;
@@ -477,10 +510,18 @@ package body Legder.Index with SPARK_Mode is
       for Step in 1 .. Pool_Size + 1 loop
          exit when Sp = 0;
          declare
-            X : constant Node_Id := St_Node (Sp);
-            D : constant Positive := St_Depth (Sp);
+            X    : constant Node_Id := St_Node (Sp);
+            D    : constant Positive := St_Depth (Sp);
+            Lo_N : constant Node_Ref := St_Lo_N (Sp);
+            Lo_I : constant Item_Idx := St_Lo_I (Sp);
+            Hi_N : constant Node_Ref := St_Hi_N (Sp);
+            Hi_I : constant Item_Idx := St_Hi_I (Sp);
          begin
             Sp := Sp - 1;
+            if Seen_Node (X) then   --  node reached twice: shared or a cycle
+               return False;
+            end if;
+            Seen_Node (X) := True;
             Nodes_Seen := Nodes_Seen + 1;
             Keys_Seen := Keys_Seen + T.Nodes (X).N;
 
@@ -490,6 +531,31 @@ package body Legder.Index with SPARK_Mode is
             if X = T.Root and then not T.Nodes (X).Leaf and then T.Nodes (X).N < 1 then
                return False;
             end if;
+
+            for J in 1 .. T.Nodes (X).N loop
+               --  #1156: strictly increasing inside the node
+               if J > 1
+                 and then not (T.Nodes (X).Items (J - 1).K < T.Nodes (X).Items (J).K)
+               then
+                  return False;
+               end if;
+               --  #1157: strictly inside the interval set by the ancestors
+               if Lo_N /= 0
+                 and then not (T.Nodes (Lo_N).Items (Lo_I).K < T.Nodes (X).Items (J).K)
+               then
+                  return False;
+               end if;
+               if Hi_N /= 0
+                 and then not (T.Nodes (X).Items (J).K < T.Nodes (Hi_N).Items (Hi_I).K)
+               then
+                  return False;
+               end if;
+               --  a slot is used by at most one key
+               if Seen_Slot (T.Nodes (X).Items (J).S) then
+                  return False;
+               end if;
+               Seen_Slot (T.Nodes (X).Items (J).S) := True;
+            end loop;
 
             if T.Nodes (X).Leaf then
                if Leaf_Depth = 0 then
@@ -508,13 +574,44 @@ package body Legder.Index with SPARK_Mode is
                   Sp := Sp + 1;
                   St_Node (Sp) := T.Nodes (X).Child (J);
                   St_Depth (Sp) := D + 1;
+                  if J > 1 then
+                     St_Lo_N (Sp) := X;
+                     St_Lo_I (Sp) := J - 1;
+                  else
+                     St_Lo_N (Sp) := Lo_N;
+                     St_Lo_I (Sp) := Lo_I;
+                  end if;
+                  if J <= T.Nodes (X).N then
+                     St_Hi_N (Sp) := X;
+                     St_Hi_I (Sp) := J;
+                  else
+                     St_Hi_N (Sp) := Hi_N;
+                     St_Hi_I (Sp) := Hi_I;
+                  end if;
                end loop;
             end if;
          end;
       end loop;
 
-      return Sp = 0
-        and then Keys_Seen = T.Total
+      if Sp /= 0 then
+         return False;
+      end if;
+
+      --  Free lists must not overlap anything in use, or each other.
+      for I in 1 .. T.Node_Free_Count loop
+         if Seen_Node (T.Node_Free (I)) then
+            return False;
+         end if;
+         Seen_Node (T.Node_Free (I)) := True;
+      end loop;
+      for I in 1 .. T.Slot_Free_Count loop
+         if Seen_Slot (T.Slot_Free (I)) then
+            return False;
+         end if;
+         Seen_Slot (T.Slot_Free (I)) := True;
+      end loop;
+
+      return Keys_Seen = T.Total
         and then Nodes_Seen + T.Node_Free_Count = Pool_Size
         and then T.Slot_Free_Count + T.Total = Capacity;
    end Well_Formed;
