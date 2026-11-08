@@ -948,6 +948,68 @@ procedure Tests is
       Check ("limits: value length 257 with a correct CRC is rejected", not Valid);
    end Test_Record_Limits;
 
+   --  Unused bytes: key padding, value padding and the reserved area
+   --  (offsets 304 .. 507). Encode writes them as zero; Decode does not
+   --  look at them. These checks pin down the behaviour that the R1
+   --  decision in docs/r1-round-trip-decision.md relies on: only the
+   --  meaningful fields of a record take part in the round trip.
+   procedure Test_Record_Unused_Bytes is
+      R, D   : Log_Record;
+      B, B2  : Block;
+      Valid  : Boolean;
+      Dirty  : Key;
+
+      procedure Reseal (X : in out Block) is
+         C : constant CRC32 := CRC (X (0 .. 507));
+      begin
+         for I in 0 .. 3 loop
+            X (508 + I) := Byte ((C / CRC32 (2) ** (8 * I)) mod 256);
+         end loop;
+      end Reseal;
+   begin
+      R := (Seq => 5, Kind => Put, K => K ("abc"), V => V ("hello"));
+
+      --  Nonzero bytes in key padding (offset 16 + 3), value padding
+      --  (offset 48 + 5) and the reserved area, with the CRC recomputed.
+      Encode (R, B);
+      B (19)  := 16#AA#;
+      B (53)  := 16#BB#;
+      B (400) := 16#CC#;
+      Reseal (B);
+      Decode (B, D, Valid);
+      Check ("unused bytes: nonzero padding with a correct CRC still decodes",
+             Valid);
+      Check ("unused bytes: meaningful fields unchanged by nonzero padding",
+             Valid and then D.Seq = 5 and then D.Kind = Put
+             and then D.K = K ("abc") and then Same (D.V, V ("hello")));
+
+      --  The CRC covers the reserved area, so damage there without a
+      --  reseal is a torn or corrupted block.
+      Encode (R, B);
+      B (400) := 16#CC#;
+      Decode (B, D, Valid);
+      Check ("unused bytes: damaged reserved byte without reseal is rejected",
+             not Valid);
+
+      --  Encode ignores whatever the caller left in the key padding.
+      Dirty := K ("abc");
+      Dirty.Bytes (10) := 16#EE#;
+      Encode (R, B);
+      Encode ((Seq => 5, Kind => Put, K => Dirty, V => V ("hello")), B2);
+      Check ("unused bytes: Encode output ignores key padding", B = B2);
+
+      --  A Delete record carries no value: a nonzero value length and
+      --  value bytes on disk are ignored by Decode.
+      Encode ((Seq => 6, Kind => Delete, K => K ("abc"), V => V ("")), B);
+      B (14) := 5;
+      B (48) := 16#DD#;
+      Reseal (B);
+      Decode (B, D, Valid);
+      Check ("unused bytes: delete ignores a stored value length",
+             Valid and then D.Kind = Delete and then D.K = K ("abc")
+             and then D.V.Length = 0);
+   end Test_Record_Unused_Bytes;
+
    --  Log edges: a completely full log, a gap in the numbering, and
    --  torn blocks that keep old data in their second half.
    procedure Test_Log_Edges is
@@ -1099,6 +1161,7 @@ begin
    Begin_Group ("2. Record format");
    Test_Record;
    Test_Record_Limits;
+   Test_Record_Unused_Bytes;
    End_Group;
 
    Begin_Group ("3. Index and B-tree");
