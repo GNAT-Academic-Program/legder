@@ -95,5 +95,7 @@ reaches 0.
 ## Next targets
 
 1. R1 round trip: postconditions on `Encode`/`Decode` plus a lemma per field.
+   What R1 means (meaningful fields, not literal equality) is decided in
+   `docs/r1-round-trip-decision.md`.
 2. `RAM_Device` counters: bound or saturate `N_Writes`/`N_Syncs`.
 3. L1 (scan stops at the first gap) through a proof instance of `Legder.Log`.
